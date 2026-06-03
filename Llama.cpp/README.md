@@ -2,7 +2,7 @@
   
    Ejemplos y proyectos con API Llama.cpp programando en C  
   
-    Antes de nada descargar e instalñar el entorno llama.cpp, en este caso se guarda en directorio llama.cpp antes de la estructura de directorio
+    Antes de nada descargar e instalar el entorno llama.cpp, en este caso se guarda en directorio llama.cpp antes de la estructura de directorio
   
     -  T- \llama.cpp      Directorio de API llama.cpp
     -  |----build            Compilación para Linux
@@ -28,8 +28,9 @@ Construcción de librerias llama.cpp en estatico, para llevar los ejemplos con f
  > cmake --build build-windows --config Release -j  
 <BR>
 #Ejemplos y proyectos  
-  - **[Base](src/Base)**  Ejemplo basico para crear el primer proyecto.
-  - **[Agente](src/Agente)**  Ejemplo de realización de una agente para preguntarle la hora ye el clima, programado para almacenar contexto.
+  
+  - **[Base](src/Base)**  Ejemplo basico para crear el primer proyecto.  
+  - **[Agente](src/Agente)**  Ejemplo de realización de una agente para preguntarle la hora ye el clima, programado para almacenar contexto.  
 
 <br><br>
 __Website__: <https://www.pinguytaz.net>

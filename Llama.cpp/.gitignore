@@ -1,0 +1,7 @@
+# Para no subir los DOC y Excell
+*.ods
+*.odt
+*.xcf
+*.gguf
+Tempo_Datos/
+llama.cpp/

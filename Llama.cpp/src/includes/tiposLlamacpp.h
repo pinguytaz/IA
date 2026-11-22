@@ -9,6 +9,7 @@
 #include "llama.h"
 #define TIPOSLLAMACPP_H
 
+
     // Parametros de configuración
     typedef struct llama_model_params paramModelo_t;
     typedef struct llama_context_params paramContext_t;
@@ -23,7 +24,5 @@
 
     // Mensajes y Tokens
     typedef struct llama_chat_message mensajeChat_t;
-
-
 
 #endif

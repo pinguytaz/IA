@@ -1,6 +1,32 @@
 # proyectos y ejemplos IA
   
    Ejemplos y proyectos con API Llama.cpp programando en C  
+
+<div style="background-color: black; color: #00FF00; padding: 20px; font-family: monospace; border-radius: 5px;">
+<pre>
+                                    ________________________________________________________________
+                                   / [ IA-LLAMA.CPP ] _____________________________________________ \
+                                   |                                                                |
+                                   |   _________________________________________________________    |
+                                   |  /                                                         \   |
+                                   |  |  [SYSTEM READY]                                         |   |
+                                   |  |  > LOADING LLAMA.CPP... [OK]                            |   |
+                                   |  |  > LOADING Base........ [OK]                            |   |
+                                   |  |  > LOADING Agente...... [OK]                            |   |
+                                   |  |  > REGEX ENGINE....... [POSIX]                          |   |
+                                   |  |                                                         |   |
+                                   |  |  > DETECTING FUNC(CALL:EXTRACT_LOGIC)...                |   |
+                                   |  \_________________________________________________________/   |
+                                   |                                                                |
+                                   |            [ 128K KV-CACHE ] [ GCC-MINGW64 ]                   |
+                                   \________________________________________________________________/
+                                            ||                                           ||
+                                       ____/  \_________________________________________/  \____
+                                      /                                                         \
+</pre>
+</div>
+
+
   
     Antes de nada descargar e instalar el entorno llama.cpp, en este caso se guarda en directorio llama.cpp antes de la estructura de directorio
   
@@ -27,10 +53,15 @@ Construcción de librerias llama.cpp en estatico, para llevar los ejemplos con f
  > cmake -B build-windows -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ -DBUILD_SHARED_LIBS=OFF  
  > cmake --build build-windows --config Release -j  
 <BR>
-#Ejemplos y proyectos  
+# Ejemplos y proyectos  
   
-  - **[Base](src/Base)**  Ejemplo basico para crear el primer proyecto.  
+  - **[Base](src/Base)**  Ejemplo basico para crear el primer proyecto.  Para Linux y Windows 
+  
   - **[Agente](src/Agente)**  Ejemplo de realización de una agente para preguntarle la hora ye el clima, programado para almacenar contexto.  
+  - **[Agente2](src/Agente2)**  Lo mismo que agente pero con el modelo en el código.   
+  
+  - **[Info_Modelo](src/Info_Modelo)**  Nos da la información de un modelo .gguf.  
+
 
 <br><br>
 __Website__: <https://www.pinguytaz.net>

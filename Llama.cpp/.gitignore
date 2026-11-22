@@ -3,5 +3,7 @@
 *.odt
 *.xcf
 *.gguf
+*.o
+modelos/
 Tempo_Datos/
 llama.cpp/

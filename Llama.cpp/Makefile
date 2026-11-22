@@ -29,7 +29,7 @@ LLAMA_LIBS_W = -lllama \
              -l:ggml-base.a \
              -l:ggml-cpu.a 
 
-all: Agente
+all: Base Info_Modelo Agente Agente2
 
 Base: $(SRC)/Base/Base.c 
 	@echo "******** Compilamos en Linux Base ********************"
@@ -37,6 +37,8 @@ Base: $(SRC)/Base/Base.c
 	@echo ""
 	@echo "****  Ejecutable Linux compilado y entregado en $(BIN)/Base.elf"
 	@echo ""
+
+BaseW: $(SRC)/Base/Base.c 
 	@echo "******** Compilamos en Windows  Base ********************"
 	$(CC_W) $(CCFLAGS) -static $(LLAMA_INC) $(SRC)/Base/Base.c $(LDFLAGS_W) $(LLAMA_LIBS_W) $(SYSTEM_LIBS_W) -o $(BIN)/Base.exe
 	@echo ""
@@ -50,4 +52,22 @@ Agente: $(SRC)/Agente/Agente.c
 	@echo "****  Ejecutable Linux compilado y entregado en $(BIN)/Agente.elf"
 	@echo ""
 
-.PHONY: all Base Agente
+modelo.o: 
+	@echo "******** Genera Modeloe ********************"
+	objcopy --input-target binary --output-target elf64-x86-64 --rename-section .data=.rodata,alloc,load,readonly,data,contents modelos/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf $(SRC)/Agente2/modelo.o
+
+Agente2: $(SRC)/Agente2/Agente2.c modelo.o
+	@echo "******** Compilamos en Linux Agente ********************"
+	$(CC) $(CCFLAGS) $(LLAMA_INC) $(SRC)/Agente2/Agente2.c $(SRC)/Agente2/modelo.o $(LDFLAGS) $(LLAMA_LIBS) $(SYSTEM_LIBS) -ldl -o $(BIN)/Agente2.elf
+	@echo ""
+	@echo "****  Ejecutable Linux compilado y entregado en $(BIN)/Agente2.elf"
+	@echo ""
+
+Info_Modelo: $(SRC)/Info_Modelo/Info_Modelo.c 
+	@echo "******** Compilamos en Linux Info_Modelo ********************"
+	$(CC) $(CCFLAGS) $(LLAMA_INC) $(SRC)/Info_Modelo/Info_Modelo.c $(LDFLAGS) $(LLAMA_LIBS) $(SYSTEM_LIBS) -ldl -o $(BIN)/Info_Modelo.elf
+	@echo ""
+	@echo "****  Ejecutable Linux compilado y entregado en $(BIN)/Info_Modelo.elf"
+	@echo ""
+
+.PHONY: all Base BaseW Agente Agente2 Info_Modelo LaBusqueda

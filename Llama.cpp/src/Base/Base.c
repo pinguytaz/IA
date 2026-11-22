@@ -36,16 +36,19 @@
 #include "funcPruebas.h"
 #include "../includes/funcCallB.h"
 
+static void batch_set_tokens(struct llama_batch_ext *batch, const llama_token *tokens, int32_t n_tokens, llama_pos pos_0);
+
 int main(int argc, char ** argv) 
 {
     if (argc != 3)
     {
-        printf("Uso: %s modelo rol prompt\n", argv[0]);
+        printf("Uso: %s modelo prompt\n", argv[0]);
 	return -1;
     }
 
     const char *pathModelo = argv[1];
     const char *prompt = argv[2];
+    int n_predict = 256;
 
     printf("Inicializando sistema IA...\n");
     llama_log_set(mi_funcion_log_silenciosa, NULL);  // Silencioamos LOG
@@ -64,12 +67,6 @@ int main(int argc, char ** argv)
     paramModelo_t parametrosModelo = llama_model_default_params();
     //  Forzar ejecución en CPU 0 capas a laCPU se procesa en CPU
     parametrosModelo.n_gpu_layers = 0; 
-    //  Optimización de memoria para CPU 
-    // Permite compartir la memoria del modelo eficientemente
-    parametrosModelo.use_mmap  = true; 
-    // EVITA que el sistema operativo mande el modelo al disco (Swap)
-    // ¡Ojo! suficiente RAM libre para el modelo. sino a false
-    parametrosModelo.use_mlock = false; 
 			       
     //Ponemos funcion de progeso de carga.
     parametrosModelo.progress_callback = mi_progreso; 
@@ -86,29 +83,8 @@ int main(int argc, char ** argv)
     infoModelo(modelo);
     printf("\t¡Modelo cargado y configurado!\n");
 
-    /* 3.- ********** Configuracion e inicialización del contexto. ****************/
-    printf("3.- Configuramos contexto \n");
-    paramContext_t parametrosContexto = llama_context_default_params();
-    // Optimización para OpenBLAS en CPU
-    parametrosContexto.n_ctx = 2048;  // Tamaño contexto
-    //parametrosContexto.n_batch = 2048; // Tokes a procesar para llama_decodee.
-    parametrosContexto.n_threads = 4; // Nucleos fisicos CPU 
-    parametrosContexto.n_threads_batch = 4; // Hilos processo 
-    parametrosContexto.flash_attn_type = true; //Ahorra RAM de contexto 
-    // .no_pref = habilta contadores tiempos
-
-    // Crear el contexto ligado al modelo
-    context_t *contexto = llama_init_from_model(modelo, parametrosContexto);
-
-    if (contexto == NULL) 
-    {
-        fprintf(stderr, "ERROR: No se pudo crear el contexto de llama.\n");
-        return 1;
-    }
-    printf("\t¡Contexto de la sesión creado con éxito!\n");
- 
-    /* 4.- ********* TOKENIZADOR **************************************************/
-    printf("4.- Preparamos tokenizador\n");
+    /* 3.- ********* TOKENIZADOR **************************************************/
+    printf("3.- Preparamos tokenizador tokenizando prompt.\n");
     // Lo primero sera cargar el vocabulario.
     const vocab_t *vocab = llama_model_get_vocab(modelo);
     int32_t tamaVocabulario = llama_vocab_n_tokens(vocab);
@@ -129,13 +105,13 @@ int main(int argc, char ** argv)
     prompt_formateado[bytes_prompt_final] = '\0'; // Asegurar cierre de cadena de C
 		
     // Continuamos con el Tokenizador
-    int32_t tokens_necesarios_negativos = llama_tokenize(vocab,prompt_formateado,strlen(prompt_formateado),NULL,0,false,true);
-    int32_t n_tokens = tokens_necesarios_negativos *  -1;
+    int32_t tokens_necesarios_negativos = llama_tokenize(vocab,prompt_formateado,strlen(prompt_formateado),NULL,0,true,true);
+    int32_t n_prompt = tokens_necesarios_negativos *  -1;   // Numero de tokens del prompt
 
-    printf("\tEl PROMPT tiene: %d TOKENS\n",n_tokens);
+    printf("\tEl PROMPT tiene: %d TOKENS\n",n_prompt);
 
-    llama_token *prompt_tokens = (llama_token*) malloc(n_tokens*sizeof(llama_token));
-    if (llama_tokenize(vocab,prompt_formateado,strlen(prompt_formateado),prompt_tokens,n_tokens,false,true)<0 )
+    llama_token *prompt_tokens = (llama_token*) malloc(n_prompt*sizeof(llama_token));
+    if (llama_tokenize(vocab,prompt_formateado,strlen(prompt_formateado),prompt_tokens,n_prompt,true,true)<0 )
     {
         fprintf(stderr,"%s: Fallo al tokenizar\n",__func__);
 	return -2;
@@ -145,35 +121,52 @@ int main(int argc, char ** argv)
 
     printf("\t¡Tokenizado preparado con su vocabulario!\n");
 
+    /* 4.- ********** Configuracion e inicialización del contexto. ****************/
+    printf("4.- Configuramos contexto \n");
+    paramContext_t parametrosContexto = llama_context_default_params();
+    // Optimización para OpenBLAS en CPU
+    //parametrosContexto.n_ctx = 2048;  // Tamaño contexto
+    //parametrosContexto.n_batch = 2048; // Tokes a procesar para llama_decodee.
+
+    parametrosContexto.n_ctx = n_prompt + n_predict -1;  // Tamaño contexto
+    parametrosContexto.n_batch = n_prompt; // Tokes a procesar para llama_decodee.
+    parametrosContexto.n_threads = 4; // Nucleos fisicos CPU 
+    parametrosContexto.n_threads_batch = 4; // Hilos processo 
+    parametrosContexto.flash_attn_type = true; //Ahorra RAM de contexto 
+    // .no_pref = habilta contadores tiempos
+
+    // Crear el contexto ligado al modelo
+    context_t *contexto = llama_init_from_model(modelo, parametrosContexto);
+
+    if (contexto == NULL) 
+    {
+        fprintf(stderr, "ERROR: No se pudo crear el contexto de llama.\n");
+        return 1;
+    }
+    printf("\t¡Contexto de la sesión creado con éxito!\n");
+ 
     /* 5.- ******* Crea Sampler **************************************/
     printf("5.- Preparamos sampler\n");
     // Iniciamos Sampler
     paramSampler_t sparams = llama_sampler_chain_default_params(); 
     sparams.no_perf = false;
     sampler_t *miSampler = llama_sampler_chain_init(sparams);
-    //llama_sampler_chain_add(miSampler, llama_sampler_init_greedy()); // Elige la mas exata
-
-    llama_sampler_chain_add(miSampler, llama_sampler_init_min_p(0.05f, 1)); // Min-P
-    llama_sampler_chain_add(miSampler, llama_sampler_init_temp(0.8f));   //Temperatura
-    //llama_sampler_chain_add(miSampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED)); // Distribución
+    llama_sampler_chain_add(miSampler, llama_sampler_init_greedy()); // Elige la mas exata
  
     printf("\t¡Sampler  preparado!\n");
 
-
     /* 6- ******* Crea BATCH ********************************************/
     printf("6- preparamos batch\n");
-    llama_batch miBatch = llama_batch_get_one(prompt_tokens, n_tokens);
+    struct llama_batch_ext *miBatch = llama_batch_ext_init(contexto);
+    int n_tokens = n_prompt;
+    batch_set_tokens(miBatch, prompt_tokens, n_prompt, 0);
 
-    infoBatch(miBatch);
-
-    //  ¿El modelo tiene un "Encoder" (Codificador)?
     // Los modelos puros de texto como Llama o Mistral devuelven 'false' aquí.
     // Los modelos como Whisper (audio) o modelos de traducción devuelven 'true'.
     if (llama_model_has_encoder(modelo)) 
     {
         printf("\tModelo audio o traducción\n");
-        // Si tiene encoder, procesamos el prompt 
-        if (llama_encode(contexto, miBatch)) 
+        if (llama_process(contexto, LLAMA_PROCESS_TYPE_DECODE, miBatch) != 0) 
 	{
             fprintf(stderr, "%s : failed to eval\n", __func__);
             return 1;
@@ -190,8 +183,8 @@ int main(int argc, char ** argv)
         }
 
         // Reutilizamos la lógica creando un nuevo batch UNITARIO (de 1 solo token)
-        // que contiene únicamente el token de arranque 
-        miBatch = llama_batch_get_one(&decoder_start_token_id, 1);
+        batch_set_tokens(miBatch, &decoder_start_token_id, 1, 0);
+        n_tokens = 1;  // Ahora en el bucle de uno en uno.
     }
     else
     {
@@ -199,42 +192,33 @@ int main(int argc, char ** argv)
     }
     printf("\t¡Batch  preparado!\n");
 
-
-    /* 7- ******* Crea BATCH ********************************************/
+    /* 7- ******* Crea BATCH en bucle de inferencia  ********************************************/
     printf("7.- Bucle inferencia\n");
-    int n_predict = 256;
+    int n_decode = 0;
     llama_token new_token_id;
-    for (int n_pos = 0; n_pos + miBatch.n_tokens < n_tokens + n_predict; ) 
+    for (int n_pos = 0; n_pos + n_tokens < n_prompt + n_predict; ) 
     {
-        if (llama_decode(contexto, miBatch) != 0) 
-        {
-            fprintf(stderr, "Error crítico: falló el decode del prompt inicial.\n");
-            return 1;
-        }
-	n_pos += miBatch.n_tokens;
+        if (llama_process(contexto, LLAMA_PROCESS_TYPE_DECODE, miBatch)) { fprintf(stderr, "Error crítico: falló el decode del prompt inicial.\n"); return 1; }
+	n_pos += n_tokens;
         
         new_token_id = llama_sampler_sample(miSampler, contexto, -1);
         // Esto es el fin de la generación
-        if (llama_vocab_is_eog(vocab, new_token_id)) 
-        {
-            break;
-        }
+        if (llama_vocab_is_eog(vocab, new_token_id)) { break; }
 
         char buf[128];
         int n = llama_token_to_piece(vocab, new_token_id, buf, sizeof(buf), 0, true);
-        if (n < 0) 
-        {
-            fprintf(stderr, "%s: error: failed to convert token to piece\n", __func__);
-            return 1;
-        }
+        if (n < 0) { fprintf(stderr, "%s: error: failed to convert token to piece\n", __func__); return 1; }
         buf[n] = 0;
         printf("%s", buf);
 
         // Prepara el sigiente lote con TOKEN sample
-        miBatch = llama_batch_get_one(&new_token_id, 1);
+        batch_set_tokens(miBatch, &new_token_id, 1, n_pos);
+
+        n_tokens = 1;
+        n_decode += 1;
     }
 
-    printf("\n\t¡Fin bucle inferencia!\n");
+    printf("\n\t¡Fin bucle inferencia! con %d n_decode\n",n_decode);
 
     // 9.- ***************** Limpieza al terminar
     printf("\n--- 9. Limpia memoria ---\n");
@@ -248,3 +232,18 @@ int main(int argc, char ** argv)
     printf("***************** ¡Fin programa IA! ******************\n");
     return 0;
 }
+
+/**** Rellena el Batch con lotes consecutivos en la posicion inicial pos_0 los logits de salida a uno el ultimo.   */
+
+static void batch_set_tokens(struct llama_batch_ext *batch, const llama_token *tokens, int32_t n_tokens, llama_pos pos_0)
+{
+    llama_batch_ext_clear(batch);
+    for (int32_t i = 0; i < n_tokens; ++i) {
+    
+        const int32_t idx = llama_batch_ext_add_token(batch, 0, tokens[i]);
+        const llama_pos pos = pos_0 + i;
+        llama_batch_ext_set_pos(batch, idx, &pos);
+    }
+    llama_batch_ext_set_output_logits(batch, n_tokens - 1, true);
+}
+

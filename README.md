@@ -7,7 +7,7 @@
 
 **[Llama.cpp](Llama.cpp)** Ejemplos de programación con el API de Llama.cpp  
   
-**[GestorLlamaCPP](Llama.cpp)** Gestor de modelos, permite la carga muliple de modemos, y realizar inferencias, sin programar casi sin codigo llama pues este ya esta en el GestorLlamaCPP  
+**[GestorLlamaCPP](https://github.com/pinguytaz/IA/tree/main/Llama.cpp/GestorLlamaCPP)** Gestor de modelos, permite la carga muliple de modemos, y realizar inferencias, sin programar casi sin codigo llama pues este ya esta en el GestorLlamaCPP  
   
    
 <br><br>
